@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_advance/new_contact_view.dart';
+import 'package:uuid/uuid.dart';
 
 void main() {
   runApp(const MyApp());
@@ -7,28 +8,29 @@ void main() {
 
 class Contact {
   final String name;
-  Contact({required this.name});
+  final String id;
+  Contact({required this.name}) : id = const Uuid().v4();
 }
 
-class ContactBook {
-  ContactBook._sharedInstance();
+class ContactBook extends ValueNotifier<List<Contact>> {
+  ContactBook._sharedInstance() : super([]);
   static final ContactBook _shared = ContactBook._sharedInstance();
   factory ContactBook() => _shared;
 
-  final List<Contact> _contacts = [];
-
-  int get contacts => _contacts.length;
+  int get contacts => value.length;
 
   void add ({required Contact contact}) {
-    _contacts.add(contact);
+    value.add(contact);
+    notifyListeners();
   }
 
   void remove ({required Contact contact}) {
-    _contacts.remove(contact);
+    value.remove(contact);
+    notifyListeners();
   }
 
   Contact? contact({required int atIndex}) {
-    _contacts.length > atIndex ? _contacts[atIndex] : null;
+    value.length > atIndex ? value[atIndex] : null;
   }
 
 }
@@ -58,19 +60,32 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final contactBook = ContactBook();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home Page'),
         backgroundColor: Colors.blue,
       ),
-      body: ListView.builder(
-        itemCount: contactBook.contacts,
-        itemBuilder: (context, index) {
-          final contact = contactBook.contact(atIndex: index)!;
-          return ListTile(
-            title: Text(contact.name),
+      body: ValueListenableBuilder(
+        valueListenable: ContactBook(),
+        builder: (context, value, child) {
+          return ListView.builder(
+            itemCount: value.length,
+            itemBuilder: (context, index) {
+              final contact = value[index];
+              return Dismissible(
+                onDismissed: (direction) {
+                  ContactBook().remove(contact: contact);
+                },
+                key: ValueKey(contact.id),
+                child: Material(
+                  color: Colors.white,
+                  elevation: 6.0,
+                  child: ListTile(
+                    title: Text(contact.name),
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
